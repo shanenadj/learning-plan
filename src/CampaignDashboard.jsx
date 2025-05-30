@@ -4,7 +4,7 @@ import { supabase } from './supabaseClient'
 export default function CampaignDashboard({ session }) {
   const [campaigns, setCampaigns] = useState([])
   const [loading, setLoading] = useState(true)
-
+  const [selectedFile, setSelectedFile] = useState(null);
   useEffect(() => {
     fetchCampaigns()
 
@@ -60,11 +60,53 @@ export default function CampaignDashboard({ session }) {
   }
 
   if (loading) return <p>Loading campaigns...</p>
+  const uploadFile = async (file) => {
+    if (!session) {
+      alert('You must be logged in to upload!');
+      return;
+    }
+  
+    try {
+      const response = await fetch('https://koervonzcjptsmnqnvmg.functions.supabase.co/upload-handler', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,},
+        body: file,
+      });
 
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Upload failed:', errorText);
+        alert('Upload failed: ' + errorText);
+      } else {
+        console.log('Upload successful!');
+        alert('File uploaded successfully!');
+      }
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      alert('Error uploading file: ' + error.message);
+    }
+  };
+  
   return (
     <div>
       <h1>Campaign Dashboard</h1>
       <button onClick={createCampaign}>New Campaign</button>
+      <input 
+  type="file" 
+  onChange={(e) => setSelectedFile(e.target.files[0])} 
+/>
+
+<button onClick={() => {
+  if (selectedFile) {
+    uploadFile(selectedFile);
+  } else {
+    alert('Please select a file first!');
+  }
+}}>
+  Upload File
+</button>
+
       <ul>
         {campaigns.map(c => (
           <li key={c.id}>
