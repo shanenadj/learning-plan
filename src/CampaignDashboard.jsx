@@ -59,54 +59,58 @@ export default function CampaignDashboard({ session }) {
     if (error) console.error('Error deleting:', error)
   }
 
-  if (loading) return <p>Loading campaigns...</p>
-  const uploadFile = async (file) => {
-    if (!session) {
-      alert('You must be logged in to upload!');
-      return;
-    }
-  
-    try {
-      const response = await fetch('https://koervonzcjptsmnqnvmg.functions.supabase.co/upload-handler', {
+// 1) keep this inside <CampaignDashboard />
+const uploadFile = async () => {
+  if (!selectedFile) {
+    alert('Select a file first');
+    return;
+  }
+
+  // ── get a *fresh* auth session ───────────────────────────────
+  const { data: { session: authSession } } = await supabase.auth.getSession();
+  if (!authSession) {
+    alert('You must be logged in to upload');
+    return;
+  }
+
+  // ── build multipart/form-data body ───────────────────────────
+  const fd = new FormData();
+  fd.append('file', selectedFile);
+
+  try {
+    const res = await fetch(
+      'https://koervonzcjptsnqmnvg.functions.supabase.co/upload-handler',
+      {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${session.access_token}`,},
-        body: file,
-      });
+          // SB checks these two headers:
+          'sb-project-ref' : 'koervonzcjptsnqmnvg',
+          authorization    : `Bearer ${authSession.access_token}`,
+        },
+        body: fd
+      },
+    );
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Upload failed:', errorText);
-        alert('Upload failed: ' + errorText);
-      } else {
-        console.log('Upload successful!');
-        alert('File uploaded successfully!');
-      }
-    } catch (error) {
-      console.error('Error uploading file:', error);
-      alert('Error uploading file: ' + error.message);
+    if (!res.ok) {
+      const text = await res.text();     // ← lowercase variable
+      throw new Error(text);
     }
-  };
+
+    alert('File uploaded successfully ✔');
+  } catch (err) {
+    console.error('Upload failed:', err);
+    alert(`Upload failed: ${err.message}`);
+  }
+};
+
   
   return (
     <div>
       <h1>Campaign Dashboard</h1>
       <button onClick={createCampaign}>New Campaign</button>
-      <input 
-  type="file" 
-  onChange={(e) => setSelectedFile(e.target.files[0])} 
+     <input type="file" onChange={(e) => setSelectedFile(e.target.files[0])}
 />
-
-<button onClick={() => {
-  if (selectedFile) {
-    uploadFile(selectedFile);
-  } else {
-    alert('Please select a file first!');
-  }
-}}>
-  Upload File
-</button>
-
+      <button onClick={uploadFile}>Upload File</button>
       <ul>
         {campaigns.map(c => (
           <li key={c.id}>
